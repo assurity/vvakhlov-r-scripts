@@ -6,28 +6,21 @@ library(forcats)
 library(extrafont)
 library(gridExtra)
 library(ggpubr)
+library(scales)
 
 source("graphs.R")
 
 # Read the input CSV file, only use 14 and 15 column.
-csv <- read.csv("C:\\Users\\vakhlovv\\jmeter-assessment\\TDC_20230831-155006_0_converted_copy.csv", sep=",", header=TRUE)
+#csv <- read.csv("C:\\Temp\\TDC_20230831-155006_0_converted_copy.csv", sep=",", header=TRUE)
+csv <- read.csv("C:\\projects\\lotto\\results\\LNZ_Results_20240322-a82_2024-03-22_184528_01.csv", sep=",", header=TRUE)
 #data <- read.csv("C:\\Users\\vakhlovv\\jmeter-assessment\\TDC_20230831-155006_0_converted_copy.csv", sep=",", header=TRUE)[, c(14, 15)]
 
-data <- csv %>% select(timeStamp, label, Latency)
+data <- csv %>% select(timeStamp, label, elapsed)
 colnames(data) <- c("timeStamp", "group","response")
 
 data$timeStamp <- as.POSIXct(data$timeStamp, format = "%Y/%m/%d %H:%M:%OS")
 
-print(names(data))
-
-#column1_index <- 1
-#column2_index <- 2
-
-# Using temporary variables
-#temp_column1 <- data[, 1]
-#data[, 1] <- data[, 2]
-#data[, 2] <- temp_column1
-#data$group <- as.factor(data$group)
+#print(names(data))
 
 x_axis_name <- names(data)[2]
 y_axis_name <- names(data)[1]
@@ -37,8 +30,8 @@ title <- sprintf("Confidence interval for %s", names(data)[1])
 theme_set (theme_light())
 theme_update (
   text = element_text(family = "Courier New"),
-  axis.text = element_text(size = 9),
-  plot.title = element_text(hjust = 0.5, size = 11, face = "bold"),
+  axis.text = element_text(size = 10),
+  plot.title = element_text(hjust = 0.5, size = 12, face = "bold"),
   axis.title.y = element_text(margin = margin(r = 8, unit = "pt")),
   axis.title.x = element_text(margin = margin(t = 8, unit = "pt")),
   legend.position = "none"
@@ -46,30 +39,42 @@ theme_update (
 
 
 # Filter and generate separate graphs for "*.js" and "*.css" groups
-graph_group_one <- generate_graph_conf(data %>% filter(grepl("Rainfall", group)), "Response", "Group", "Confidence interval for resources")
-graph_group_two <- generate_graph_conf(data %>% filter(!grepl("Rainfall", group)), "Response", "Group", "Confidence interval for pages")
-graph_group_three <- generate_graph_percentile(data %>% filter(!grepl("jquery", group)), "Response", "Group", "Percentile for pages")
-graph_group_four <- generate_graph_scatter(data %>% filter(grepl("Flow", group)), "Response", "Group", "Confidence interval for resources")
+#graph_group_one <- generate_graph_conf(data %>% filter(grepl("Wagers", group)), "Response", "Request", "Confidence interval for APIs")
+#graph_group_two <- generate_graph_conf(data %>% filter(!grepl("Wagers", group) & !grepl("Log", group)), "Response", "Request", "Confidence interval for APIs")
+graph_group_one <- generate_graph_conf(data, "Response", "Request", "Confidence interval for APIs", 90, reverse = TRUE)
+graph_group_two <- generate_graph_conf(data, "Response", "Request", "Confidence interval for APIs", 90, reverse = FALSE)
+graph_group_three <- generate_graph_percentile((data), "Response", "Group", "Percentile for pages")
+graph_group_four <- generate_graph_scatter((data), "Response", "Group", "Scatter plot for APIs")
 
-print(graph_group_one)
-print(graph_group_two)
-print(graph_group_three)
 print(graph_group_four)
 
+# Use this line of code to arrange all latency graphs on one sheet (not recommended)
+# arranged_graphsScatter <- do.call(grid.arrange, c(graph_group_four, ncol = 2))
 
-arranged_graphsScatter <- do.call(grid.arrange, c(graph_group_four, ncol = 2))
+# Use this if to arrange latency graphs on several sheets (by 6)
+if (length(graph_group_four) > 6) {
+  # Split graph_group_four into chunks of no more than 6 plots each
+  graph_chunks <- split(graph_group_four, ceiling(seq_along(graph_group_four)/6))
+  
+  # Create a list to store arranged graphs
+  arranged_graphs_list <- list()
+  
+  # Loop through each chunk and arrange them
+  for (chunk in graph_chunks) {
+    arranged_graphs_list[[length(arranged_graphs_list) + 1]] <- do.call(grid.arrange, c(chunk, ncol = 2))
+  }
+  
+  # Print each arranged graph separately
+  for (i in seq_along(arranged_graphs_list)) {
+    print(arranged_graphs_list[[i]])
+  }
+} else {
+  # If the number of plots is 6 or fewer, arrange them in a single grid
+  arranged_graphsScatter <- do.call(grid.arrange, c(graph_group_four, ncol = 2))
+  print(arranged_graphsScatter)
+}
 
-
-# Arrange the graphs using grid.arrange, this won't align graphs.
-# Left if needed in the future.
-
-#arranged_graphs <- grid.arrange(
-#  graph_js$graph1, graph_js$graph2, graph_other$graph1, graph_other$graph2,
-#  widths = c(2, 1, 1),
-#  layout_matrix = rbind(c(1, 1, 2),
-#                        c(3, 3, 4))
-#)
-
+graph_group_five <- generate_bars(data, "1", "2", "3")
 
 # The code below arranges graphs by pair and aligns them.
 
@@ -89,7 +94,9 @@ arranged_graphs_all <- grid.arrange(
 
 # Display the arranged graphs
 
-#print(arranged_graphs)
+#print arranged graphs
+print(graph_group_one)
+print(graph_group_two)
+print(graph_group_three)
+print(graph_group_five)
 print(arranged_graphs_all)
-print(arranged_graphsScatter)
-
